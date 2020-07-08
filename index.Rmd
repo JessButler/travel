@@ -75,7 +75,8 @@ no_cars %>%
     perc_more_than_5km_no_car = workers_travel_more_than_5km_no_car/total_workers_no_car *100)
 
 simd <- left_join(simd_indicators, simd_zones, by = c("Data_Zone" = "DZ")) %>%
-  left_join(., method_travel_work, by = c("Data_Zone" = "x1")) 
+  left_join(., method_travel_work, by = c("Data_Zone" = "x1")) %>%
+  left_join(., no_car_and_more_than_5_km, by = c("Data_Zone" = "x1"))
 
 ```
 
@@ -160,19 +161,24 @@ grampian %>%
    tab_options(container.height = 400)
 ```
 
+<br></br>
+-----
+
+### Where do people have to travel far to work without a car?
+Mouseover points for area names
+
 ```{r, echo = F, message=F}
-# travel_plot <-
-# ggplot(data = grampian_sf, 
-#          aes(x = factor(URname), y = perc_more_than_5km_no_car, label = DZname)) +
-#   geom_violin() +
-#   geom_jitter(alpha = 0.8, size = 1, aes(color = LAname)) +
-#   background_grid() +
-#   labs(
-#     #x = "\nUrban/Rural", 
-#     y = "Travel 5km+ to work and\n own no car (%)\n\n") +
-#   theme(legend.title = element_blank(), axis.text.x = element_text(angle = 30), axis.title.x = element_blank())
-# 
-# ggplotly(travel_plot, tooltip = "label")
+travel_plot <-
+ggplot(data = grampian_sf,
+         aes(x = factor(URname), y = perc_more_than_5km_no_car, label = DZname)) +
+  geom_jitter(alpha = 0.8, size = 1, aes(color = LAname)) +
+  background_grid() +
+  labs(
+    #x = "\nUrban/Rural",
+    y = "Travel 5km+ to work and\n own no car (%)\n\n") +
+  theme(legend.title = element_blank(), axis.text.x = element_text(angle = 30), axis.title.x = element_blank())
+
+ggplotly(travel_plot, tooltip = "label")
 ```
 
 <br></br>
