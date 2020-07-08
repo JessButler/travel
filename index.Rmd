@@ -1,4 +1,6 @@
 ---
+title: "Travel and Vulnerability in Grampian"
+
 output:
   html_document: default
 ---
@@ -15,8 +17,7 @@ library(plotly)
 
 theme_set(theme_cowplot())
 ```
-
-## Travel and Vulnerability in Grampian
+ 
 
 -----
 
@@ -168,17 +169,17 @@ grampian %>%
 Mouseover points for area names
 
 ```{r, echo = F, message=F}
-travel_plot <-
-ggplot(data = grampian_sf,
-         aes(x = factor(URname), y = perc_more_than_5km_no_car, label = DZname)) +
-  geom_jitter(alpha = 0.8, size = 1, aes(color = LAname)) +
-  background_grid() +
-  labs(
-    #x = "\nUrban/Rural",
-    y = "Travel 5km+ to work and\n own no car (%)\n\n") +
-  theme(legend.title = element_blank(), axis.text.x = element_text(angle = 30), axis.title.x = element_blank())
-
-ggplotly(travel_plot, tooltip = "label")
+# travel_plot <-
+# ggplot(data = grampian_sf,
+#          aes(x = factor(URname), y = perc_more_than_5km_no_car, label = DZname)) +
+#   geom_jitter(alpha = 0.8, size = 1, aes(color = LAname)) +
+#   background_grid() +
+#   labs(
+#     #x = "\nUrban/Rural",
+#     y = "Travel 5km+ to work and\n own no car (%)\n\n") +
+#   theme(legend.title = element_blank(), axis.text.x = element_text(angle = 30), axis.title.x = element_blank())
+# 
+# ggplotly(travel_plot, tooltip = "label")
 ```
 
 <br></br>
