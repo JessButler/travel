@@ -1,0 +1,195 @@
+---
+output:
+  html_document: default
+---
+
+```{r, include = F}
+library(here)
+library(tidyverse)
+library(janitor)
+library(sf)
+library(mapview)
+library(gt)
+library(cowplot)
+library(plotly)
+
+theme_set(theme_cowplot())
+```
+
+## Travel and Vulnerability in Grampian
+
+-----
+
+```{r, include = F}
+#load SIMD data
+
+simd_zones <- 
+  read_csv(here("data", "SIMD+2020v2+-+datazone+lookup.csv")) 
+
+simd_indicators <- 
+  read_csv(here("data", "SIMD2020v2_indicators.csv")) %>%
+   mutate(across(everything(), ~ str_remove_all(., "%")),
+          across(everything(), ~ str_remove_all(., "\\*")),
+          across(Total_population:nocentralheat_rate, ~ as.numeric(.)))
+
+#load shapefiles for maps
+
+datazone_sf <- st_read(here("data", "sc_dz_11.shp"))
+
+#load data from 2011 census bulk files
+#clean variable names to remove caps and spaces
+
+method_travel_work <- read_csv(here("data", "SNS Data Zone 2011 blk", "QS701SC.csv")) %>% 
+  clean_names()
+
+car <- read_csv(here("data", "SNS Data Zone 2011 blk", "KS404SC.csv")) %>% 
+  clean_names()
+
+distance_to_work_by_car <- read_csv(here("data", "SNS Data Zone 2011 blk", "LC7402SC.csv")) %>% 
+  clean_names()
+
+```
+
+```{r, include = F}
+#calc percent who travel by bus or train
+#identfiy areas with workers who have no car and travel more than 5km to work
+#join deprivation to census files
+
+method_travel_work <-
+method_travel_work %>% 
+  mutate(perc_bus_train = (bus_minibus_or_coach + underground_metro_light_rail_or_tram)/all_people_aged_16_to_74 *100)
+
+no_cars <-
+distance_to_work_by_car %>%
+  select(-number_of_cars_or_vans_in_household_one_car_or_van, -number_of_cars_or_vans_in_household_two_or_more_cars_or_vans) %>%
+  mutate(
+    travel_more_than_5km = 
+      ifelse(x2 %in% c("5km to less than 10km", "10km to less than 20km", "20km to less than 30km", "30km and over"), all_people_aged_16_to_74_in_households_in_employment, 0)) 
+
+no_car_and_more_than_5_km <-
+no_cars %>%
+  group_by(x1) %>%
+  summarise(
+    total_workers_no_car = max(all_people_aged_16_to_74_in_households_in_employment),
+    workers_travel_more_than_5km_no_car = sum(travel_more_than_5km),
+    perc_more_than_5km_no_car = workers_travel_more_than_5km_no_car/total_workers_no_car *100)
+
+simd <- left_join(simd_indicators, simd_zones, by = c("Data_Zone" = "DZ")) %>%
+  left_join(., method_travel_work, by = c("Data_Zone" = "x1")) 
+
+```
+
+
+```{r, include = F}
+#pull grampian regions only
+
+grampian <-
+  simd %>%
+  filter(HBname == "Grampian") 
+
+grampian_data_zones <- pull(grampian, Data_Zone)
+
+grampian_sf <- filter(datazone_sf, DataZone %in% grampian_data_zones)
+
+grampian_sf <-
+  left_join(grampian_sf, grampian, by = c("DataZone" = "Data_Zone"))
+
+```
+
+
+### How many people take public transit to work?
+Mouseover points for area names
+
+```{r, echo = F, message=F, fig.width=8}
+
+bus_plot <-
+ggplot(data = grampian_sf,
+       aes(y = perc_bus_train, x = SIMD2020v2_Rank, color = LAname, label = DZname)) + 
+  scale_x_reverse() +
+  geom_point(alpha = 0.5) +
+  geom_smooth(size = 0.5, method = "lm", se = F) +
+  theme(legend.title = element_blank(), 
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  labs(x= "Deprivation (increasing)", y = "\nTake bus or train to work (%)\n")
+
+ggplotly(bus_plot, tooltip = "label")
+
+```
+
+<br></br>
+
+### Where do people who take transit to work live?
+Mouseover for area names, click for %
+
+```{r, error = F, echo = F}
+aberdeen_sf <-
+grampian_sf %>%
+  filter(Council_area == "Aberdeen City")
+
+aberdeen_sf %>%
+  select(DataZone, Name, Total_population, SIMD2020v2_Decile, perc_bus_train) %>%
+  mapview(
+   map.types = "OpenStreetMap",
+   zcol = "perc_bus_train",
+   label = aberdeen_sf$Name,
+   layer.name = "take transit (%)",
+   alpha.regions = 0.8)
+```
+
+<br></br>
+
+### Which neighbourhoods have the most people taking transit to work?
+<br></br>
+```{r, echo = F}
+grampian %>%
+  filter(Council_area == "Aberdeen City") %>%
+  select(DZname, Total_population, perc_bus_train, SIMD2020v2_Decile) %>%
+    filter(perc_bus_train >= 20) %>%
+    arrange(SIMD2020v2_Decile) %>%
+  gt() %>%
+  fmt_number(columns = vars(perc_bus_train), decimals = 0) %>%
+  tab_header(
+     title = "Data Zones with >20% people taking bus/train to work, by most deprived") %>%
+   cols_label(
+     DZname = "Data Zone",
+     Total_population = "Population",
+     perc_bus_train = "Taking bus/train (%)",
+     SIMD2020v2_Decile = "Deprivation decile") %>%
+   tab_options(data_row.padding = px(1)) %>%
+   tab_options(container.height = 400)
+```
+
+```{r, echo = F, message=F}
+# travel_plot <-
+# ggplot(data = grampian_sf, 
+#          aes(x = factor(URname), y = perc_more_than_5km_no_car, label = DZname)) +
+#   geom_violin() +
+#   geom_jitter(alpha = 0.8, size = 1, aes(color = LAname)) +
+#   background_grid() +
+#   labs(
+#     #x = "\nUrban/Rural", 
+#     y = "Travel 5km+ to work and\n own no car (%)\n\n") +
+#   theme(legend.title = element_blank(), axis.text.x = element_text(angle = 30), axis.title.x = element_blank())
+# 
+# ggplotly(travel_plot, tooltip = "label")
+```
+
+<br></br>
+-----
+### Sources  
+
+Travel data from the 2011 Census 
+https://www.scotlandscensus.gov.uk/ods-web/data-warehouse.html
+
+Deprivation measures from Scottish Index of Multiple Deprivation 2020 version 2 
+https://www.gov.scot/collections/scottish-index-of-multiple-deprivation-2020/
+
+Shapefiles for mapping from Scottish Government
+https://data.gov.uk/dataset/ab9f1f20-3b7f-4efa-9bd2-239acf63b540/data-zone-boundaries-2011
+
+Code and data at https://github.com/JessButler/travel
+
+Contact jessicabutler@abdn.ac.uk
+
+
