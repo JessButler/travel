@@ -43,7 +43,7 @@ datazone_sf <- st_read(here("data", "sc_dz_11.shp"))
 method_travel_work <- read_csv(here("data", "SNS Data Zone 2011 blk", "QS701SC.csv")) %>% 
   clean_names()
 
-car <- read_csv(here("data", "SNS Data Zone 2011 blk", "KS404SC.csv")) %>% 
+car_ownership <- read_csv(here("data", "SNS Data Zone 2011 blk", "KS404SC.csv")) %>% 
   clean_names()
 
 distance_to_work_by_car <- read_csv(here("data", "SNS Data Zone 2011 blk", "LC7402SC.csv")) %>% 
@@ -59,6 +59,10 @@ distance_to_work_by_car <- read_csv(here("data", "SNS Data Zone 2011 blk", "LC74
 method_travel_work <-
 method_travel_work %>% 
   mutate(perc_bus_train = (bus_minibus_or_coach + underground_metro_light_rail_or_tram)/all_people_aged_16_to_74 *100)
+
+car_ownership <-
+  car_ownership %>%
+  mutate(perc_households_no_car = number_of_cars_or_vans_in_household_no_cars_or_vans/all_households * 100)
 
 no_cars <-
 distance_to_work_by_car %>%
@@ -77,6 +81,7 @@ no_cars %>%
 
 simd <- left_join(simd_indicators, simd_zones, by = c("Data_Zone" = "DZ")) %>%
   left_join(., method_travel_work, by = c("Data_Zone" = "x1")) %>%
+  left_join(., car_ownership, by = c("Data_Zone" = "x1")) %>%
   left_join(., no_car_and_more_than_5_km, by = c("Data_Zone" = "x1"))
 
 ```
@@ -121,7 +126,7 @@ ggplotly(bus_plot, tooltip = "label")
 
 <br></br>
 
-### Where do people who take transit to work live?
+### Where do people who take public transit to work live?
 Mouseover for area names, click for %
 
 ```{r, error = F, echo = F}
@@ -135,13 +140,13 @@ aberdeen_sf %>%
    map.types = "OpenStreetMap",
    zcol = "perc_bus_train",
    label = aberdeen_sf$Name,
-   layer.name = "take transit (%)",
+   layer.name = "take public trans (%)",
    alpha.regions = 0.8)
 ```
 
 <br></br>
 
-### Which neighbourhoods have the most people taking transit to work?
+### Which neighbourhoods have the most people taking public transit to work?
 <br></br>
 ```{r, echo = F}
 grampian %>%
@@ -163,10 +168,55 @@ grampian %>%
 ```
 
 <br></br>
------
 
-### Where do people have to travel far to work without a car?
+____
+### Where do people live remotely without a car?
 Mouseover points for area names
+
+
+```{r, echo = F, warning=F, fig.width=10}
+
+car_plot <-
+  grampian_sf %>%
+  filter(URclass %in% c(4, 6)) %>%
+ggplot(aes(y = perc_households_no_car, x = SIMD2020v2_Rank, color = Council_area, label = DZname)) + 
+  scale_x_reverse() +
+  geom_point(alpha = 0.8) +
+  labs(title = "Households without a car (%) \n", x= "\nDeprivation (increasing)", y = "") +
+  facet_grid(~ URname) +
+  theme(legend.title = element_blank(), 
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  theme(strip.background = element_rect(fill="white")) 
+
+ggplotly(car_plot, tooltip = "label")
+
+```
+
+<br></br> 
+
+### Which remote rural areas have the most households without cars? 
+
+<br></br>
+```{r, echo = F}
+grampian %>%
+  filter(URclass %in% c(6)) %>%
+  select(DZname, Total_population, perc_households_no_car, SIMD2020v2_Decile) %>%
+    filter(perc_households_no_car >= 20) %>%
+    arrange(DZname) %>%
+  gt() %>%
+  fmt_number(columns = vars(perc_households_no_car), decimals = 0) %>%
+  tab_header(
+     title = "Rural data zones where the most households lack a car") %>%
+   cols_label(
+     DZname = "Data Zone",
+     Total_population = "Population",
+     perc_households_no_car = "No car (%)",
+     SIMD2020v2_Decile = "Deprivation decile") %>%
+   tab_options(data_row.padding = px(1)) %>%
+   tab_options(container.height = 400)
+```
+
 
 ```{r, echo = F, message=F}
 # travel_plot <-
