@@ -207,7 +207,7 @@ grampian %>%
   gt() %>%
   fmt_number(columns = vars(perc_households_no_car), decimals = 0) %>%
   tab_header(
-     title = "Rural data zones where the most households lack a car") %>%
+     title = "Remote rural data zones where the most households lack a car") %>%
    cols_label(
      DZname = "Data Zone",
      Total_population = "Population",
