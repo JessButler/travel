@@ -102,32 +102,31 @@ grampian_sf <-
   left_join(grampian_sf, grampian, by = c("DataZone" = "Data_Zone"))
 
 ```
+<br></br> 
 
+## 1. Public Transit 
 
-### How many people take public transit to work?
-Mouseover points for area names
+### How many people take public transit to work? 
+**Mouseover or click points for area names**
 
 ```{r, echo = F, message=F, fig.width=8}
 
 bus_plot <-
 ggplot(data = grampian_sf,
-       aes(y = perc_bus_train, x = SIMD2020v2_Rank, color = LAname, label = DZname)) + 
-  scale_x_reverse() +
-  geom_point(alpha = 0.5) +
+       aes(y = perc_bus_train, x = LAname, color = LAname, label = DZname)) + 
+  #scale_x_reverse() +
+  geom_jitter(alpha = 0.5) +
   geom_smooth(size = 0.5, method = "lm", se = F) +
-  theme(legend.title = element_blank(), 
-        axis.text.x=element_blank(),
-        axis.ticks.x=element_blank()) +
-  labs(x= "Deprivation (increasing)", y = "\nTake bus or train to work (%)\n")
+  theme(legend.title = element_blank()) +
+  labs(x = "", y = "\nTake bus or train to work (%)\n")
 
 ggplotly(bus_plot, tooltip = "label")
 
 ```
 
-<br></br>
 
-### Where do people who take public transit to work live?
-Mouseover for area names, click for %
+### Which neighbourhoods have the most people taking public transit to work?
+**Mouseover or click for area names and details**
 
 ```{r, error = F, echo = F}
 aberdeen_sf <-
@@ -146,8 +145,8 @@ aberdeen_sf %>%
 
 <br></br>
 
-### Which neighbourhoods have the most people taking public transit to work?
-<br></br>
+### Which neighbourhoods in Aberdeen city have the most people taking public transit to work?
+
 ```{r, echo = F}
 grampian %>%
   filter(Council_area == "Aberdeen City") %>%
@@ -166,27 +165,76 @@ grampian %>%
    tab_options(data_row.padding = px(1)) %>%
    tab_options(container.height = 400)
 ```
-
+ 
+<br></br>
+<br></br>
+<br></br>
+<br></br>
+ 
+### Which neighbourhoods in Aberdeenshire have the most people taking public transit to work? 
+ 
+ 
+```{r, echo = F}
+grampian %>%
+  filter(Council_area == "Aberdeenshire") %>%
+  select(DZname, Total_population, perc_bus_train, SIMD2020v2_Decile) %>%
+    filter(perc_bus_train >= 9) %>%
+    arrange(DZname) %>%
+  gt() %>%
+  fmt_number(columns = vars(perc_bus_train), decimals = 0) %>%
+  tab_header(
+     title = "Data Zones with >20% people taking bus/train to work, by most deprived") %>%
+   cols_label(
+     DZname = "Data Zone",
+     Total_population = "Population",
+     perc_bus_train = "Taking bus/train (%)",
+     SIMD2020v2_Decile = "Deprivation decile") %>%
+   tab_options(data_row.padding = px(1)) 
+```
+<br></br>
+<br></br>
+<br></br>
 <br></br>
 
-____
-### Where do people live remotely without a car?
-Mouseover points for area names
+### Which neighbourhoods in Moray have the most people taking public transit to work?
 
+```{r, echo = F}
+grampian %>%
+  filter(Council_area == "Moray") %>%
+  select(DZname, Total_population, perc_bus_train, SIMD2020v2_Decile) %>%
+    filter(perc_bus_train >= 8) %>%
+    arrange(DZname) %>%
+  gt() %>%
+  fmt_number(columns = vars(perc_bus_train), decimals = 0) %>%
+  tab_header(
+     title = "Data Zones with >20% people taking bus/train to work, by most deprived") %>%
+   cols_label(
+     DZname = "Data Zone",
+     Total_population = "Population",
+     perc_bus_train = "Taking bus/train (%)",
+     SIMD2020v2_Decile = "Deprivation decile") %>%
+   tab_options(data_row.padding = px(1)) 
+```
+<br></br> 
+<br></br> 
+<br></br> 
 
-```{r, echo = F, warning=F, fig.width=10}
+____ 
+## 2. Remote Communities 
+ 
+### Where do people live remotely without a car? 
+
+**Mouseover or click points for area names**
+```{r, echo = F}
 
 car_plot <-
   grampian_sf %>%
   filter(URclass %in% c(4, 6)) %>%
-ggplot(aes(y = perc_households_no_car, x = SIMD2020v2_Rank, color = Council_area, label = DZname)) + 
-  scale_x_reverse() +
-  geom_point(alpha = 0.8) +
-  labs(title = "Households without a car (%) \n", x= "\nDeprivation (increasing)", y = "") +
-  facet_grid(~ URname) +
-  theme(legend.title = element_blank(), 
-        axis.text.x=element_blank(),
-        axis.ticks.x=element_blank()) +
+ggplot(aes(y = perc_households_no_car, x = URname, color = Council_area, label = DZname)) + 
+  #scale_x_reverse() +
+  geom_jitter(alpha = 0.8) +
+  labs(y = "Households without a car (%)\n", x = "") +
+  theme(legend.title = element_blank()) +
   theme(strip.background = element_rect(fill="white")) 
 
 ggplotly(car_plot, tooltip = "label")
@@ -213,10 +261,31 @@ grampian %>%
      Total_population = "Population",
      perc_households_no_car = "No car (%)",
      SIMD2020v2_Decile = "Deprivation decile") %>%
-   tab_options(data_row.padding = px(1)) %>%
-   tab_options(container.height = 400)
+   tab_options(data_row.padding = px(1)) 
 ```
 
+<br></br> 
+
+### Which remote small towns have the most households without cars? 
+
+<br></br>
+```{r, echo = F}
+grampian %>%
+  filter(URclass %in% c(4)) %>%
+  select(DZname, Total_population, perc_households_no_car, SIMD2020v2_Decile) %>%
+    filter(perc_households_no_car >= 30) %>%
+    arrange(DZname) %>%
+  gt() %>%
+  fmt_number(columns = vars(perc_households_no_car), decimals = 0) %>%
+  tab_header(
+     title = "Remote towns data zones where the most households lack a car") %>%
+   cols_label(
+     DZname = "Data Zone",
+     Total_population = "Population",
+     perc_households_no_car = "No car (%)",
+     SIMD2020v2_Decile = "Deprivation decile") %>%
+   tab_options(data_row.padding = px(1)) 
+```
 
 ```{r, echo = F, message=F}
 # travel_plot <-
@@ -234,7 +303,7 @@ grampian %>%
 
 <br></br>
 -----
-### Sources  
+## Sources  
 
 Travel data from the 2011 Census 
 https://www.scotlandscensus.gov.uk/ods-web/data-warehouse.html
